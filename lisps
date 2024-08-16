@@ -1,0 +1,23 @@
+(lambda (a b) (if (= b 0)
+  a
+  (plus (+ a 1) (- b 1))
+)
+
+
+(val plus (lambda (a b) (if (= b 0) a (plus (+ a 1) (- b 1))))
+
+(val fib (lambda (x) (if (< x 2) 1 
+  (+ (fib (- x 1)) (fib (- x 2)))
+  
+)) ) 
+(fib 2)
+
+
+(val fib (
+lambda (x acc1 acc2) 
+  (if (= x 0) acc2 
+  (if (= x 1) acc1
+  (fib (- x 1) (+ acc1 acc2) acc1)))
+)
+)
+

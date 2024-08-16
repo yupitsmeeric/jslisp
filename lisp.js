@@ -76,6 +76,20 @@ class Bool extends Token {
   }
 }
 
+class Closure extends Token {
+  constructor(lambda, env) {
+    super(lambda)
+    this.kind = "closure"
+    this.symbol = null; // add the name of the function (if recursive)
+    this.env = env;
+    this.args = lambda.args;
+    this.body = lambda.body;
+  }
+
+  pretty(indent = 0){
+    return " ".repeat(indent) + "closure";
+  }
+}
 /* Lexer helpers */
 function is_whitespace (c) {
   return c === ' ' || c === "\t" || c === "\n";
@@ -214,13 +228,14 @@ class DefExp extends ASTNode{
 }
 
 class CallExp extends ASTNode{
+
   constructor(list){
     super(list);
     this.kind = "callexp"
-    if (list.value[0].kind != "symbol") {
-      throw "ParseError: (fn args...)"
-    }
-    this.fn = list.value[0];
+    // if (list.value[0].kind == "symbol") {
+    //   throw "ParseError: (fn args...)"
+    // }
+    this.fn = build_ast(list.value[0]);
     this.args = list.value.slice(1,);
   }
 
@@ -263,6 +278,32 @@ class IfExp extends ASTNode{
               this.iftrue.pretty(indent+2) + " else " + this.iffalse.pretty(indent+2)  + "\n";
   }
 }
+
+class LambdaExp extends ASTNode{
+  constructor(list){
+    super(list);
+    this.kind = "lambdaexp"
+    // Check that all args are symbols
+    if (list.value[1].kind != "list"){
+      throw "ParseError: (lambda (args...) (body))";
+    }
+    list.value[1].value.forEach((x)=>{
+      if (x.kind != "symbol"){
+        throw "ParseError: All args to function must be symbols";
+      }
+    })
+    this.args = list.value[1]; // List of symbols
+    this.body = build_ast(list.value[2]);
+  }
+
+  pretty(indent = 0){
+    let res = " ".repeat(indent) + "<lambda: ( ";
+    this.args.value.forEach((e) => {res += e.value + " ";});
+    res += ")";
+    return res
+  }
+}
+
 /* PARSER / AST BUILDER */
 binops = ["+", "-", "/", "*", "=", ">", "<"]
 function build_ast(token){
@@ -278,7 +319,10 @@ function build_ast(token){
       return new DefExp(token);
     case "if":
       return new IfExp(token);
+    case "lambda":
+      return new LambdaExp(token);
     default: 
+      // console.log("CallExp formed in ast");
       return new CallExp(token);
 
   }
@@ -297,7 +341,7 @@ class Environment{
 
   lookup(name){
     if (this.env.has(name.value)) {
-      console.log("found: "+ name.value );
+      // console.log("found: "+ name.value );
       return this.env.get(name.value);  
     } else if (this.child === null) {
       throw "ValueError: " + name.value + " is undefined";
@@ -317,6 +361,8 @@ function eval(ast, env){
     case "quote":
       return ast;
     case "symbol":
+      // console.log("looking up " + ast.value);
+      // console.log(env);
       return env.lookup(ast);
 
     case "defexp":
@@ -332,6 +378,34 @@ function eval(ast, env){
     
     case "binop":
       return eval_binop(ast, env);
+    case "lambdaexp":
+      return new Closure(ast, env);
+    case "callexp":
+      // TODO
+      // get the lambda function
+      fn = eval(ast.fn, env);
+      if (fn.kind != "closure") {
+        throw "ParseError: (closure args...)";
+      }
+      // bind all arguments
+      // console.log(fn.args);
+      if (ast.args.length != fn.args.value.length) {
+        throw "ParseError: function accepts " + fn.args.value.length + " arguments"
+      }
+      const cl_env = new Environment(env);
+      for (let i=0; i < ast.args.length; ++i){
+        // console.log("args...");
+        // console.log(ast.args[i]);
+        cl_env.bind(fn.args.value[i], eval( build_ast(ast.args[i]), env)); 
+      }
+
+      // eval body and return
+      // return new Symbol("CallExp");
+      return eval(fn.body, cl_env);
+
+
+    default:
+      return new Integer(0);
 
   }
 }
@@ -370,13 +444,18 @@ function eval_binop(ast, env){
 }
 
 function repl(input, env){
-  lex = read_sexp(input, 0);
-  // console.log(lex);
-  lex = lex[0];
-  ast = build_ast(lex);
-  // console.log('hi');
-  // console.log(lex.pretty());
-  let res = eval(ast, env)
+  // console.log(env);
+  var res;
+  var pos = 0;
+  while (pos < input.length){
+    lex = read_sexp(input, pos);
+    if (!lex) {break;}
+    // console.log(lex);
+    sexp = lex[0];
+    pos = lex[1];
+    ast = build_ast(sexp);
+    res = eval(ast, env)
+  }
   console.log(res.pretty());
   return res;
 }
@@ -392,12 +471,12 @@ function main(){
   // console.log(token.pretty());
   // console.log( build_ast(token) );
   // let input = "(if #t (+ 1 (+ 3 3)) 1)"
-  let input = "(val a 2)"
-  const env = new Environment(null);
-  console.log(env);
-  repl(input, env);
-  console.log(env);
-  repl("(+ a a)", env);
+  // let input = "(lambda (a b) (+ a b))"
+  // const env = new Environment(null);
+  // console.log(env);
+  // repl(input, env);
+  // console.log(env);
+  // repl("(+ a a)", env);
 }
 
 main();
