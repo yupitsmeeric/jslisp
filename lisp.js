@@ -216,14 +216,14 @@ class DefExp extends ASTNode{
     super(list);
     this.kind = "defexp"
     if (list.value.length != 3 || list.value[1].kind != "symbol") {
-      throw "ParseError: (val name exp)"
+      throw "ParseError: (define name exp)"
     }
     this.name = list.value[1];
     this.exp = build_ast(list.value[2]);
   }
 
   pretty(indent = 0){
-    return " ".repeat(indent) + "val " + this.name + this.exp.pretty(indent+2)+ "\n";
+    return " ".repeat(indent) + "define " + this.name + this.exp.pretty(indent+2)+ "\n";
   }
 }
 
@@ -315,7 +315,7 @@ function build_ast(token){
     return new BinOpExp(token);
   }
   switch (token.value[0].value){
-    case "val": 
+    case "define": 
       return new DefExp(token);
     case "if":
       return new IfExp(token);
