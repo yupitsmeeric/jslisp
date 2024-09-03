@@ -21,3 +21,6 @@ lambda (x acc1 acc2)
 )
 )
 
+(val fibonacci (lambda (n) (fib n 1 0)))
+
+(fibonacci 100)
